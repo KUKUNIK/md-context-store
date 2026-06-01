@@ -1,5 +1,9 @@
 # md-context-store
 
+[![CI](https://github.com/KUKUNIK/md-context-store/actions/workflows/ci.yml/badge.svg)](https://github.com/KUKUNIK/md-context-store/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/md-context-store.svg)](https://www.npmjs.com/package/md-context-store)
+[![license](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+
 A local, filesystem-based context store for AI agent sessions. Plain markdown files with YAML frontmatter — no database, no server, no lock-in.
 
 If you've ever pasted "here's what I was doing last time" into a Claude/GPT/Codex session over and over, this gives you a CLI to dump that context once and reload it cleanly.
