@@ -184,9 +184,9 @@ The `Entry`, `BootstrapResult`, and frontmatter types are exported, so you can b
 
 ## Roadmap
 
-- [ ] `mdcs handoff` — render a session handoff package for a different agent.
-- [ ] Search across chunks (companion package: `md-chunk-search`).
-- [ ] Git integration helpers (commit on every write, optional).
+- [x] Optional git integration that commits on every write (shipped in `0.2.0`, see [Git audit trail](#git-audit-trail)).
+- [ ] `mdcs handoff` — render a session handoff package for a different agent (likely sharing a schema with [ai-handoff-md](https://github.com/KUKUNIK/ai-handoff-md)).
+- [ ] Search across chunks (companion package: [md-chunk-search](https://github.com/KUKUNIK/md-chunk-search)).
 - [ ] Subproject hierarchy (one level deep).
 
 ## Development
