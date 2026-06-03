@@ -1,6 +1,6 @@
 {
   "name": "md-context-store",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local filesystem-based context store for AI agent sessions. Markdown files with YAML frontmatter, no database.",
   "type": "module",
   "main": "./dist/index.js",

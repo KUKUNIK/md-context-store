@@ -10,10 +10,26 @@ import type {
   IssueType,
 } from "./lib/types.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
-function makeStore(options: { store?: string }): Store {
-  return new Store({ root: options.store });
+interface GlobalOptions {
+  store?: string;
+  git?: boolean;
+  gitAuthor?: string;
+  gitEmail?: string;
+}
+
+function makeStore(options: GlobalOptions): Store {
+  return new Store({
+    root: options.store,
+    git: options.git
+      ? {
+          enabled: true,
+          authorName: options.gitAuthor,
+          authorEmail: options.gitEmail,
+        }
+      : undefined,
+  });
 }
 
 async function readBody(opts: {
@@ -56,14 +72,17 @@ async function main(): Promise<void> {
       "md-context-store — local filesystem context store for AI sessions",
     )
     .version(VERSION)
-    .option("--store <path>", "store root directory (default: $MDCS_HOME or ~/.mdcs)");
+    .option("--store <path>", "store root directory (default: $MDCS_HOME or ~/.mdcs)")
+    .option("--git", "auto-commit every write to the store root as a git audit trail")
+    .option("--git-author <name>", "git author name (used with --git; default: mdcs)")
+    .option("--git-email <email>", "git author email (used with --git; default: mdcs@local)");
 
   program
     .command("init <project-id>")
     .description("initialize a project directory")
     .option("--summary <text>", "initial project summary text")
     .action(async (projectId: string, opts: { summary?: string }) => {
-      const store = makeStore(program.opts());
+      const store = makeStore(program.opts() as GlobalOptions);
       await store.initProject(projectId, { summary: opts.summary });
       printOk(`project initialized: ${projectId} (store: ${store.root})`);
     });
@@ -72,7 +91,7 @@ async function main(): Promise<void> {
     .command("projects")
     .description("list all projects in the store")
     .action(async () => {
-      const store = makeStore(program.opts());
+      const store = makeStore(program.opts() as GlobalOptions);
       const ids = await store.listProjects();
       if (ids.length === 0) {
         process.stdout.write("(no projects yet)\n");
@@ -92,7 +111,7 @@ async function main(): Promise<void> {
         projectId: string,
         opts: { content?: string; contentFile?: string; stdin?: boolean },
       ) => {
-        const store = makeStore(program.opts());
+        const store = makeStore(program.opts() as GlobalOptions);
         const body = await readBody({
           body: opts.content,
           bodyFile: opts.contentFile,
@@ -123,7 +142,7 @@ async function main(): Promise<void> {
         projectId: string,
         opts: { content?: string; contentFile?: string; stdin?: boolean },
       ) => {
-        const store = makeStore(program.opts());
+        const store = makeStore(program.opts() as GlobalOptions);
         const body = await readBody({
           body: opts.content,
           bodyFile: opts.contentFile,
@@ -164,7 +183,7 @@ async function main(): Promise<void> {
           by?: string;
         },
       ) => {
-        const store = makeStore(program.opts());
+        const store = makeStore(program.opts() as GlobalOptions);
         const body = await readBody({
           body: opts.body,
           bodyFile: opts.bodyFile,
@@ -202,7 +221,7 @@ async function main(): Promise<void> {
           date?: string;
         },
       ) => {
-        const store = makeStore(program.opts());
+        const store = makeStore(program.opts() as GlobalOptions);
         const body = await readBody({
           body: opts.body,
           bodyFile: opts.bodyFile,
@@ -242,7 +261,7 @@ async function main(): Promise<void> {
           by?: string;
         },
       ) => {
-        const store = makeStore(program.opts());
+        const store = makeStore(program.opts() as GlobalOptions);
         const issueType = opts.type as IssueType;
         if (!["bug", "task", "risk", "incident"].includes(issueType)) {
           printErr(`invalid --type: ${opts.type}`);
@@ -288,7 +307,7 @@ async function main(): Promise<void> {
           process.exitCode = 1;
           return;
         }
-        const store = makeStore(program.opts());
+        const store = makeStore(program.opts() as GlobalOptions);
         const entries = await store.list(projectId, kind, {
           limit: Number.parseInt(opts.limit, 10),
           includeArchived: opts.archived,
@@ -324,7 +343,7 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const store = makeStore(program.opts());
+      const store = makeStore(program.opts() as GlobalOptions);
       const entry = await store.show(projectId, kind, id);
       if (!entry) {
         printErr(`not found: ${kind} ${id}`);
@@ -351,7 +370,7 @@ async function main(): Promise<void> {
           limitIssues: string;
         },
       ) => {
-        const store = makeStore(program.opts());
+        const store = makeStore(program.opts() as GlobalOptions);
         const result = await buildBootstrap(store, projectId, {
           recentChunkLimit: Number.parseInt(opts.limitChunks, 10),
           recentDecisionLimit: Number.parseInt(opts.limitDecisions, 10),
@@ -376,7 +395,7 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const store = makeStore(program.opts());
+      const store = makeStore(program.opts() as GlobalOptions);
       const entry = await store.updateIssueStatus(
         projectId,
         issueId,
@@ -401,7 +420,7 @@ async function main(): Promise<void> {
           process.exitCode = 1;
           return;
         }
-        const store = makeStore(program.opts());
+        const store = makeStore(program.opts() as GlobalOptions);
         const entry = await store.archive(projectId, kind, id, opts.reason);
         printOk(`archived: ${entry.frontmatter.id}`);
       },
@@ -416,9 +435,40 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const store = makeStore(program.opts());
+      const store = makeStore(program.opts() as GlobalOptions);
       const entry = await store.restore(projectId, kind, id);
       printOk(`restored: ${entry.frontmatter.id}`);
+    });
+
+  program
+    .command("log")
+    .description("show the git audit log (requires --git on the parent invocation)")
+    .option("-n, --limit <n>", "limit entries", "20")
+    .action(async (opts: { limit: string }) => {
+      const globalOpts = program.opts() as GlobalOptions;
+      if (!globalOpts.git) {
+        printErr(
+          "mdcs log requires --git on the parent invocation (e.g. `mdcs --git log`)",
+        );
+        process.exitCode = 1;
+        return;
+      }
+      const store = makeStore(globalOpts);
+      if (!store.gitEnabled) {
+        printErr("git audit is not enabled for this store");
+        process.exitCode = 1;
+        return;
+      }
+      const entries = await store.auditLog(Number.parseInt(opts.limit, 10));
+      if (entries.length === 0) {
+        process.stdout.write("(no commits yet)\n");
+        return;
+      }
+      for (const e of entries) {
+        process.stdout.write(
+          `${e.sha.slice(0, 8)}  ${e.date}  ${e.subject}\n`,
+        );
+      }
     });
 
   try {

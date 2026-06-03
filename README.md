@@ -8,7 +8,7 @@ A local, filesystem-based context store for AI agent sessions. Plain markdown fi
 
 If you've ever pasted "here's what I was doing last time" into a Claude/GPT/Codex session over and over, this gives you a CLI to dump that context once and reload it cleanly.
 
-> Status: `0.1.0` — usable, but the schema may evolve before `1.0`.
+> Status: `0.2.0` — usable, but the schema may evolve before `1.0`.
 
 ## Why
 
@@ -103,9 +103,45 @@ mdcs restore <project-id> <kind> <id>
 
 mdcs bootstrap <project-id> [--limit-chunks <n>] [--limit-decisions <n>] [--limit-issues <n>]
 
-# global option for any command:
+mdcs --git log [-n <limit>]   # show the audit trail (requires --git)
+
+# global options for any command:
   --store <path>          # override store root (default $MDCS_HOME or ~/.mdcs)
+  --git                   # auto-commit every write as an audit trail
+  --git-author <name>     # used with --git (default: mdcs)
+  --git-email <email>     # used with --git (default: mdcs@local)
 ```
+
+## Git audit trail
+
+By default, mdcs writes files and that's that — the directory is a
+plain note store. Pass `--git` and every write the store performs
+(summary updates, current-work bumps, new chunks/decisions/issues,
+status changes, archive/restore) becomes a single git commit on the
+store root:
+
+```bash
+mdcs --git init my-app
+mdcs --git add decision my-app --title "use SQLite" --by dohyun \
+  --reasoning "no concurrent writers"
+mdcs --git status my-app 20260603-093000-001-fix-redirect resolved
+
+mdcs --git log
+# 4f1a2b8c  2026-06-03T09:31:14Z  decision(my-app/20260603-093014-002-use-sqlite): added
+# 7e9d3a01  2026-06-03T09:30:02Z  summary(my-app): update project summary
+```
+
+Commit subjects describe the operation and the affected entry id, so
+`git log -p projects/my-app/issues/<id>.md` gives you a full history
+of a single issue without any extra plumbing. The trail uses
+`--no-verify` so it doesn't trigger user-installed hooks. Author/email
+default to `mdcs / mdcs@local` and can be overridden per invocation.
+
+If the store root isn't already a git repo, the first commit runs
+`git init --initial-branch=main`. If you'd rather drive git yourself
+(e.g. the store sits inside a larger repo you control), just omit
+`--git` — the store is identical in either mode, the audit trail is
+the only difference.
 
 ## Library usage
 

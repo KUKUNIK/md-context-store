@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-03
+
+### Added
+
+- **Git audit trail.** `--git` makes every store write — summary,
+  current work, new chunks/decisions/issues, status transitions,
+  archive / restore — into a single git commit on the store root.
+  Commit subjects name the operation and the affected entry id.
+- `mdcs --git log` reads the audit trail (sha · ISO date · subject).
+- `--git-author` and `--git-email` override the committer identity
+  (defaults: `mdcs / mdcs@local`).
+- Library: `GitAudit` class + `GitOptions` / `GitAuditOptions` types
+  exported from the package root. `Store` accepts a `git` field in
+  `StoreConfig`; opt-in only — omit it and behavior is identical to
+  `0.1.0`.
+- `Store.gitEnabled` getter and `Store.auditLog(limit?)` helper.
+
+### Notes
+
+- The first commit runs `git init --initial-branch=main` if the store
+  root isn't already a repo; pass `initIfMissing: false` to require
+  an existing repo.
+- Commits use `--no-verify` so user hooks don't fire on mdcs writes.
+
 ## [0.1.0] - 2026-06-01
 
 ### Added

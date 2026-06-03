@@ -6,6 +6,8 @@ export type {
   ListOptions,
   StoreConfig,
 } from "./lib/store.js";
+export { GitAudit } from "./lib/git.js";
+export type { GitAuditOptions, GitOptions } from "./lib/git.js";
 export { buildBootstrap, renderBootstrap } from "./lib/bootstrap.js";
 export { entryId, slugify, timestampId } from "./lib/id.js";
 export {

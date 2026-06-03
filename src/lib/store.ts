@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, writeFile, stat } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, relative } from "node:path";
 import { parse, serialize } from "./frontmatter.js";
+import { GitAudit, type GitAuditOptions } from "./git.js";
 import { entryId } from "./id.js";
 import {
   currentWorkPath,
@@ -46,6 +47,7 @@ function nowIso(): string {
 
 export interface StoreConfig {
   root?: string;
+  git?: GitAuditOptions;
 }
 
 export interface AddChunkInput {
@@ -78,9 +80,30 @@ export interface ListOptions {
 
 export class Store {
   readonly root: string;
+  private readonly git: GitAudit | null;
 
   constructor(config: StoreConfig = {}) {
     this.root = config.root ?? defaultStoreRoot();
+    this.git =
+      config.git && config.git.enabled !== false
+        ? new GitAudit(this.root, config.git)
+        : null;
+  }
+
+  get gitEnabled(): boolean {
+    return this.git !== null;
+  }
+
+  /** Read-only access to the audit log if git is enabled. */
+  async auditLog(limit?: number) {
+    if (!this.git) return [];
+    return this.git.log(limit);
+  }
+
+  private async commit(message: string, ...paths: string[]): Promise<void> {
+    if (!this.git) return;
+    const rels = paths.map((p) => relative(this.root, p));
+    await this.git.commit(message, rels);
   }
 
   async initProject(
@@ -121,6 +144,7 @@ export class Store {
       summary.content,
     );
     await writeFile(path, file, "utf8");
+    await this.commit(`summary(${projectId}): update project summary`, path);
     return summary;
   }
 
@@ -152,6 +176,7 @@ export class Store {
       work.content,
     );
     await writeFile(path, file, "utf8");
+    await this.commit(`current(${projectId}): update current work`, path);
     return work;
   }
 
@@ -283,6 +308,10 @@ export class Store {
     fm.updated_at = nowIso();
     if (status === "resolved") fm.resolved_at = fm.updated_at;
     await writeFile(path, serialize({ ...fm }, entry.body), "utf8");
+    await this.commit(
+      `issue(${projectId}/${id}): status → ${status}`,
+      path,
+    );
     return { frontmatter: fm, body: entry.body, path };
   }
 
@@ -301,6 +330,10 @@ export class Store {
     fm.archived_reason = reason;
     fm.updated_at = fm.archived_at;
     await writeFile(path, serialize({ ...fm }, entry.body), "utf8");
+    await this.commit(
+      `archive ${kind}(${projectId}/${id}): ${reason}`,
+      path,
+    );
     return { frontmatter: fm as AnyFrontmatter, body: entry.body, path };
   }
 
@@ -318,6 +351,7 @@ export class Store {
     delete fm.archived_reason;
     fm.updated_at = nowIso();
     await writeFile(path, serialize({ ...fm }, entry.body), "utf8");
+    await this.commit(`restore ${kind}(${projectId}/${id})`, path);
     return { frontmatter: fm as AnyFrontmatter, body: entry.body, path };
   }
 
@@ -344,6 +378,7 @@ export class Store {
       body,
     );
     await writeFile(path, file, "utf8");
+    await this.commit(`add ${kind}(${projectId}/${frontmatter.id})`, path);
     return { frontmatter, body: body.trim(), path };
   }
 
