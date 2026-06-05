@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- `mdcs list <project-id> <kind> --since <yyyy-mm-dd-or-iso>` filters
+  entries by an inclusive lower bound on `created_at`. ListOptions
+  gains a matching `since` field for library callers.
+- `SECURITY.md` describing the reporting flow and the (intentionally
+  narrow) attack surface — local filesystem, optional `--git` audit
+  commits, no network.
+
 ## [0.2.0] - 2026-06-03
 
 ### Added
