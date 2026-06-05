@@ -54,6 +54,10 @@ EOF
 
 # dump everything as one markdown blob
 mdcs bootstrap my-app > bootstrap.md
+
+# or grab only what's changed since yesterday's session
+mdcs list my-app chunk --since 2026-06-04
+mdcs list my-app decision --since "$(date -u -d yesterday +%Y-%m-%d)"
 ```
 
 `bootstrap.md` is the thing you paste into your next AI session.
@@ -94,7 +98,9 @@ mdcs add decision <project-id> --title <text> --by <agent>
 mdcs add issue <project-id> --title <text> --type bug|task|risk|incident
   [--severity low|medium|high|critical] [--body | --body-file | --stdin] [--by <agent>]
 
-mdcs list <project-id> <kind> [--limit <n>] [--archived] [--status <state>]
+mdcs list <project-id> <kind>
+  [--limit <n>] [--archived] [--status <state>]
+  [--since <yyyy-mm-dd-or-iso>]   # only entries with created_at >= since
 mdcs show <project-id> <kind> <id>
 
 mdcs status <project-id> <issue-id> open|in_progress|resolved|archived
