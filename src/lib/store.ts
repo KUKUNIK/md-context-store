@@ -76,6 +76,12 @@ export interface ListOptions {
   limit?: number;
   includeArchived?: boolean;
   status?: IssueStatus;
+  /**
+   * Inclusive lower bound on `created_at`. Accepts either a YYYY-MM-DD
+   * date or a full ISO 8601 timestamp; entries with `created_at`
+   * lexicographically less than this string are filtered out.
+   */
+  since?: string;
 }
 
 export class Store {
@@ -275,6 +281,9 @@ export class Store {
         entry.frontmatter.kind === "issue" &&
         (entry.frontmatter as IssueFrontmatter).status !== options.status
       ) {
+        continue;
+      }
+      if (options.since && entry.frontmatter.created_at < options.since) {
         continue;
       }
       entries.push(entry);

@@ -296,12 +296,28 @@ async function main(): Promise<void> {
     .option("--limit <n>", "limit results", "20")
     .option("--archived", "include archived entries")
     .option("--status <state>", "filter issues by status")
+    .option(
+      "--since <yyyy-mm-dd-or-iso>",
+      "only entries with created_at >= this value (inclusive)",
+    )
     .action(
       async (
         projectId: string,
         kind: string,
-        opts: { limit: string; archived?: boolean; status?: string },
+        opts: {
+          limit: string;
+          archived?: boolean;
+          status?: string;
+          since?: string;
+        },
       ) => {
+        if (opts.since && !/^\d{4}-\d{2}-\d{2}(T|$)/.test(opts.since)) {
+          printErr(
+            `invalid --since: ${opts.since} (expected YYYY-MM-DD or ISO 8601)`,
+          );
+          process.exitCode = 1;
+          return;
+        }
         if (!isEntryKind(kind)) {
           printErr(`invalid kind: ${kind} (expected chunk | decision | issue)`);
           process.exitCode = 1;
@@ -312,6 +328,7 @@ async function main(): Promise<void> {
           limit: Number.parseInt(opts.limit, 10),
           includeArchived: opts.archived,
           status: opts.status as IssueStatus | undefined,
+          since: opts.since,
         });
         if (entries.length === 0) {
           process.stdout.write("(none)\n");

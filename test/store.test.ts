@@ -118,6 +118,41 @@ describe("Store", () => {
     expect(after[0]?.frontmatter.archived).toBe(false);
   });
 
+  it("filters entries by --since (inclusive lower bound on created_at)", async () => {
+    await store.initProject("demo");
+    const old = await store.addChunk("demo", {
+      section: "ancient",
+      body: "from before",
+    });
+    // Ensure the two entries have distinguishable created_at timestamps.
+    await new Promise((r) => setTimeout(r, 5));
+    const recent = await store.addChunk("demo", {
+      section: "recent",
+      body: "from after",
+    });
+
+    // since in the distant past → both visible
+    const allEntries = await store.list("demo", "chunk", {
+      since: "1970-01-01",
+    });
+    expect(allEntries.map((e) => e.frontmatter.id).sort()).toEqual(
+      [old.frontmatter.id, recent.frontmatter.id].sort(),
+    );
+
+    // since after the older entry's timestamp → only the newer one survives
+    const cutoff = recent.frontmatter.created_at;
+    const onlyRecent = await store.list("demo", "chunk", { since: cutoff });
+    expect(onlyRecent.map((e) => e.frontmatter.id)).toEqual([
+      recent.frontmatter.id,
+    ]);
+
+    // since in the far future → nothing
+    const future = await store.list("demo", "chunk", {
+      since: "2999-01-01",
+    });
+    expect(future).toEqual([]);
+  });
+
   it("writes and reads project summary and current work", async () => {
     await store.initProject("demo");
     await store.updateProjectSummary("demo", "# Demo\n\nDescription.");
